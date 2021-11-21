@@ -13,6 +13,9 @@ contract PathRewards {
     uint public rewardPerTokenStored;
     uint public stakedSupply = 0;
 
+    // last time
+    uint private lastRewardTimestamp;
+
     mapping(address => uint) public userRewardperTokenPaid;
     mapping(address => uint) public rewards;
     mapping(address => uint) private _balances;
@@ -23,16 +26,28 @@ contract PathRewards {
 
     constructor(IERC20  _token) {
         token = _token;
+        //rewards will end one year after contract creation
+        lastRewardTimestamp = block.timestamp + (365 * 86400);
     }
 
     modifier updateReward(address account) {
         rewardPerTokenStored = rewardPerToken();
-        lastUpdateTime = block.timestamp;
+        lastUpdateTime = rewardTimestamp();
         if (account != address(0)){
             rewards[account] = earned(account);
             userRewardperTokenPaid[account] = rewardPerTokenStored;
         }
         _;
+    }
+
+    //function to check if staking rewards have ended
+    function rewardTimestamp() internal view returns (uint) {
+        if (block.timestamp < lastRewardTimestamp) {
+            return block.timestamp;
+        }
+        else {
+            return lastRewardTimestamp;
+        }
     }
 
     function balanceOf(address account) external view returns (uint) {
@@ -44,7 +59,7 @@ contract PathRewards {
             return 0;
         }
         return rewardPerTokenStored + (
-            rewardRate * (block.timestamp - lastUpdateTime) * 1e18 / stakedSupply
+            rewardRate * (rewardTimestamp()- lastUpdateTime) * 1e18 / stakedSupply
         );
     }
 
@@ -57,7 +72,7 @@ contract PathRewards {
     function stake(uint _amount) external updateReward(msg.sender) {
         require(_amount > 0, "Must stake > 0 tokens");
         stakedSupply += _amount;
-        _balances[msg.sender] -= _amount;
+        _balances[msg.sender] += _amount;
         token.transferFrom(msg.sender, address(this), _amount);
         emit Staked(msg.sender, _amount);
     }
