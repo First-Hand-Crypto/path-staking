@@ -25,8 +25,8 @@ contract PathRewards is Ownable{
     event Withdrawn(address indexed user, uint amountWithdrawn);
     event RewardsClaimed(address indexed user, uint rewardsClaimed);
 
-    constructor(IERC20  _token) {
-        token = _token;
+    constructor(address  _tokenAddress) {
+        token = IERC20(_tokenAddress);
         //rewards will end one year after contract creation
         lastRewardTimestamp = block.timestamp + (365 * 86400);
     }
