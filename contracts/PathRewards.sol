@@ -1,10 +1,11 @@
 //SPDX-License-Identifier: MIT
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 pragma solidity ^0.8.0;
 
-contract PathRewards {
+contract PathRewards is Ownable{
     IERC20 public token;
 
     uint public totalRewardTokens = 150000000 * 1e18;
@@ -12,6 +13,9 @@ contract PathRewards {
     uint public lastUpdateTime;
     uint public rewardPerTokenStored;
     uint public stakedSupply = 0;
+
+    // last time
+    uint private lastRewardTimestamp;
 
     mapping(address => uint) public userRewardperTokenPaid;
     mapping(address => uint) public rewards;
@@ -23,16 +27,28 @@ contract PathRewards {
 
     constructor(IERC20  _token) {
         token = _token;
+        //rewards will end one year after contract creation
+        lastRewardTimestamp = block.timestamp + (365 * 86400);
     }
 
     modifier updateReward(address account) {
         rewardPerTokenStored = rewardPerToken();
-        lastUpdateTime = block.timestamp;
+        lastUpdateTime = rewardTimestamp();
         if (account != address(0)){
             rewards[account] = earned(account);
             userRewardperTokenPaid[account] = rewardPerTokenStored;
         }
         _;
+    }
+
+    //function to check if staking rewards have ended
+    function rewardTimestamp() internal view returns (uint) {
+        if (block.timestamp < lastRewardTimestamp) {
+            return block.timestamp;
+        }
+        else {
+            return lastRewardTimestamp;
+        }
     }
 
     function balanceOf(address account) external view returns (uint) {
@@ -44,7 +60,7 @@ contract PathRewards {
             return 0;
         }
         return rewardPerTokenStored + (
-            rewardRate * (block.timestamp - lastUpdateTime) * 1e18 / stakedSupply
+            rewardRate * (rewardTimestamp()- lastUpdateTime) * 1e18 / stakedSupply
         );
     }
 
@@ -57,7 +73,7 @@ contract PathRewards {
     function stake(uint _amount) external updateReward(msg.sender) {
         require(_amount > 0, "Must stake > 0 tokens");
         stakedSupply += _amount;
-        _balances[msg.sender] -= _amount;
+        _balances[msg.sender] += _amount;
         token.transferFrom(msg.sender, address(this), _amount);
         emit Staked(msg.sender, _amount);
     }
@@ -80,5 +96,16 @@ contract PathRewards {
     function exit() external {
         withdraw(_balances[msg.sender]);
         getReward();
+    }
+
+    //owner only functions
+
+    //recover any leftoever reward tokens
+    function recoverExcess(uint _amount) onlyOwner external {
+        //ensures that tokens cannot be recovered until staking period has ended
+        require(block.timestamp > lastRewardTimestamp);
+        //ensures no removal of staked tokens
+        require(_amount - stakedSupply > 0);
+        token.transfer(msg.sender, _amount);
     }
 }
