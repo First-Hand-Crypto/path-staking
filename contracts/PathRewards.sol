@@ -12,9 +12,9 @@ contract PathRewards is Ownable{
     uint public rewardRate = totalRewardTokens / (365 * 86400);
     uint public lastUpdateTime;
     uint public rewardPerTokenStored;
-    uint public stakedSupply = 0;
 
     // last time
+    uint private stakedSupply = 0;
     uint private lastRewardTimestamp;
 
     mapping(address => uint) public userRewardperTokenPaid;
@@ -53,6 +53,11 @@ contract PathRewards is Ownable{
 
     function balanceOf(address account) external view returns (uint) {
         return _balances[account];
+    }
+
+
+    function totalStaked() public view returns (uint) {
+        return stakedSupply;
     }
 
     function rewardPerToken() public view returns (uint) {
