@@ -1,10 +1,11 @@
 //SPDX-License-Identifier: MIT
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 pragma solidity ^0.8.0;
 
-contract PathRewards {
+contract PathRewards is Ownable{
     IERC20 public token;
 
     uint public totalRewardTokens = 150000000 * 1e18;
@@ -95,5 +96,16 @@ contract PathRewards {
     function exit() external {
         withdraw(_balances[msg.sender]);
         getReward();
+    }
+
+    //owner only functions
+
+    //recover any leftoever reward tokens
+    function recoverExcess(uint _amount) onlyOwner external {
+        //ensures that tokens cannot be recovered until staking period has ended
+        require(block.timestamp > lastRewardTimestamp);
+        //ensures no removal of staked tokens
+        require(_amount - stakedSupply > 0);
+        token.transfer(msg.sender, _amount);
     }
 }
