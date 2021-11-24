@@ -61,6 +61,10 @@ contract PathRewards is Ownable{
         return stakedSupply;
     }
 
+    function totalClaimed() public view returns (uint) {
+        return claimedRewards;
+    }
+
     function rewardPerToken() public view returns (uint) {
         if (stakedSupply == 0) {
             return 0;
