@@ -8,13 +8,14 @@ pragma solidity ^0.8.0;
 contract PathRewards is Ownable{
     IERC20 public token;
 
-    uint public totalRewardTokens = 150000000 * 1e18;
+    uint public totalRewardTokens = 150000000;
     uint public rewardRate = totalRewardTokens / (365 * 86400);
     uint public lastUpdateTime;
     uint public rewardPerTokenStored;
 
     // last time
     uint private stakedSupply = 0;
+    uint private claimedRewards = 0;
     uint private lastRewardTimestamp;
 
     mapping(address => uint) public userRewardperTokenPaid;
@@ -94,6 +95,7 @@ contract PathRewards is Ownable{
     function getReward() public updateReward(msg.sender) {
         uint reward = rewards[msg.sender];
         rewards[msg.sender] = 0;
+        claimedRewards += reward;
         token.transfer(msg.sender, reward);
         emit RewardsClaimed(msg.sender, reward);
     }
