@@ -8,17 +8,18 @@ pragma solidity ^0.8.0;
 contract PathRewards is Ownable{
     IERC20 public token;
 
-    uint public totalRewardTokens = 150000000;
-    uint public rewardRate = totalRewardTokens / (365 * 86400);
+    //total reward tokens will be 150,000,000 given out over 365 days
+    uint public rewardRate = 0;
+    uint public rewardsDuration = 365 days;
     uint public lastUpdateTime;
+    uint public lastRewardTimestamp;
     uint public rewardPerTokenStored;
 
     // last time
     uint private stakedSupply = 0;
     uint private claimedRewards = 0;
-    uint private lastRewardTimestamp;
 
-    mapping(address => uint) public userRewardperTokenPaid;
+    mapping(address => uint) public userRewardPerTokenPaid;
     mapping(address => uint) public rewards;
     mapping(address => uint) private _balances;
 
@@ -28,8 +29,6 @@ contract PathRewards is Ownable{
 
     constructor(address  _tokenAddress) {
         token = IERC20(_tokenAddress);
-        //rewards will end one year after contract creation
-        lastRewardTimestamp = block.timestamp + (365 * 86400);
     }
 
     modifier updateReward(address account) {
@@ -37,7 +36,7 @@ contract PathRewards is Ownable{
         lastUpdateTime = rewardTimestamp();
         if (account != address(0)){
             rewards[account] = earned(account);
-            userRewardperTokenPaid[account] = rewardPerTokenStored;
+            userRewardPerTokenPaid[account] = rewardPerTokenStored;
         }
         _;
     }
@@ -70,13 +69,13 @@ contract PathRewards is Ownable{
             return 0;
         }
         return rewardPerTokenStored + (
-            rewardRate * (rewardTimestamp()- lastUpdateTime) * 1e18 / stakedSupply
+            (rewardRate * (rewardTimestamp()- lastUpdateTime) * 1e18 / stakedSupply)
         );
     }
 
     function earned(address account) public view returns (uint) {
         return (
-            _balances[account] * (rewardPerToken() - userRewardperTokenPaid[account]) / 1e18
+            _balances[account] * (rewardPerToken() - userRewardPerTokenPaid[account]) / 1e18
         ) + rewards[account];
     }
 
@@ -118,5 +117,22 @@ contract PathRewards is Ownable{
         //ensures no removal of staked tokens
         require(_amount - stakedSupply > 0);
         token.transfer(msg.sender, _amount);
+    }
+
+    function setRewardAmount(uint reward) onlyOwner external updateReward(address(0)) {
+        if (block.timestamp >= lastRewardTimestamp) {
+            rewardRate = reward / rewardsDuration;
+        }
+        else {
+            uint remaining = lastRewardTimestamp - block.timestamp;
+            uint leftover = remaining * rewardRate;
+            rewardRate = (reward + leftover) / rewardsDuration;
+        }
+        uint balance = token.balanceOf(address(this)) - stakedSupply;
+
+        require(rewardRate <= balance / rewardsDuration, "Contract does not have enough tokens for current reward rate");
+
+        lastUpdateTime = block.timestamp;
+        lastRewardTimestamp = block.timestamp + rewardsDuration;
     }
 }
