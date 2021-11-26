@@ -70,8 +70,8 @@ describe("Path Token contract", function () {
       await sleep(10000);
       await PathStake.getReward();
       const claimAmount = rewardRate * 10
-      const claimed = await PathStake.totalClaimed()
-      expect(ethers.utils.formatEther(claimed), claimAmount)
+      const claimed = ethers.utils.formatEther(await PathStake.totalClaimed())
+      expect(parseFloat(claimed).to.equal(parseFloat(expectedClaimed)));
     })
 
     it("Should allow me to claim the correct with another staker rewards", async function() {
@@ -107,7 +107,7 @@ describe("Path Token contract", function () {
       const expectedClaimed = ((100/200) * rewardRate * 10) + ((100/250) * rewardRate * 10) + ((100/150) * rewardRate * 10);
       const totalClaimed = await PathStake.totalClaimed();
       const actualClaimed = ethers.utils.formatEther(totalClaimed) - ethers.utils.formatEther(firstClaimed);
-      expect(actualClaimed, expectedClaimed);
+      expect(parseFloat(actualClaimed).to.equal(parseFloat(expectedClaimed)));
 
     })
   });
