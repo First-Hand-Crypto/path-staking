@@ -45,7 +45,7 @@ describe("Path Token contract", function () {
     it("Should allow me to stake", async function() {
       const contractBalance = await Path.balanceOf(PathStakeAddr);
 
-      await PathStake.setRewardAmount("150000000");
+      await PathStake.setRewardAmount("150000000000000000000000000");
 
       const rewardRate = parseInt(150000000 / (365 * 24 * 60 * 60));
 
@@ -56,28 +56,27 @@ describe("Path Token contract", function () {
     })
 
     it("Should allow me to claim the correct rewards", async function() {
-      function sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-      }
       const contractBalance = await Path.balanceOf(PathStakeAddr);
 
-      await PathStake.setRewardAmount("150000000");
+      await PathStake.setRewardAmount("150000000000000000000000000");
 
       const rewardRate = 150000000 / (365 * 24 * 60 * 60);
       
       await PathStake.stake("100000000000000000000");
+      const blockNumAfter = await ethers.provider.getBlockNumber();
+      const blockAfter = await ethers.provider.getBlock(blockNumAfter);
+      const timeStampNow = blockAfter.timestamp;
+      await network.provider.send("evm_setNextBlockTimestamp", [timeStampNow+9])
+      await network.provider.send("evm_mine")
 
-      await sleep(10000);
       await PathStake.getReward();
       const claimAmount = rewardRate * 10
-      const claimed = ethers.utils.formatEther(await PathStake.totalClaimed())
-      expect(parseFloat(claimed).to.equal(parseFloat(expectedClaimed)));
+      const claimed = ethers.utils.formatEther(await PathStake.totalClaimed());
+      expect(parseFloat(claimed)).to.equal(parseFloat(claimAmount));
     })
 
-    it("Should allow me to claim the correct with another staker rewards", async function() {
-      function sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-      }
+    it("Should allow me to claim the correct rewards with another staker", async function() {
+
       await Path.transfer(addr1.address, "100000000000000000000000000");
       await Path.connect(addr1).approve(PathStakeAddr, "1000000000000000000000000000");
       await Path.transfer(addr2.address, "100000000000000000000000000");
@@ -86,28 +85,50 @@ describe("Path Token contract", function () {
       const contractBalance = await Path.balanceOf(PathStakeAddr);
 
       await PathStake.setRewardAmount("150000000000000000000000000");
-      await sleep(10000);
+      const blockNumAfter = await ethers.provider.getBlockNumber();
+      const blockAfter = await ethers.provider.getBlock(blockNumAfter);
+      const timeStampNow = blockAfter.timestamp;
+      await network.provider.send("evm_setNextBlockTimestamp", [timeStampNow+9])
+      await network.provider.send("evm_mine")
 
       const rewardRate = 150000000 / (365 * 24 * 60 * 60);
       
       await PathStake.stake("100000000000000000000");
 
-      const lastStakedTime = PathStake.lastUpdateTime();
-      await sleep(10000);
+      const blockNumAfter2 = await ethers.provider.getBlockNumber();
+      const blockAfter2 = await ethers.provider.getBlock(blockNumAfter2);
+      const timeStampNow2 = blockAfter2.timestamp;
+      await network.provider.send("evm_setNextBlockTimestamp", [timeStampNow2+9])
+      await network.provider.send("evm_mine");
       await PathStake.connect(addr1).stake("100000000000000000000");
-      await sleep(10000);
+
+      const blockNumAfter3 = await ethers.provider.getBlockNumber();
+      const blockAfter3 = await ethers.provider.getBlock(blockNumAfter3);
+      const timeStampNow3 = blockAfter3.timestamp;
+      await network.provider.send("evm_setNextBlockTimestamp", [timeStampNow3+9]);
+      await network.provider.send("evm_mine")
       await PathStake.connect(addr2).stake("50000000000000000000");
-      await sleep(10000);
+
+
+      const blockNumAfter4 = await ethers.provider.getBlockNumber();
+      const blockAfter4 = await ethers.provider.getBlock(blockNumAfter4);
+      const timeStampNow4 = blockAfter4.timestamp;
+      await network.provider.send("evm_setNextBlockTimestamp", [timeStampNow4+9]);
+      await network.provider.send("evm_mine")
       await PathStake.exit();
       const firstClaimed = await PathStake.totalClaimed();
 
-      await sleep(10000);
+      const blockNumAfter5 = await ethers.provider.getBlockNumber();
+      const blockAfter5 = await ethers.provider.getBlock(blockNumAfter5);
+      const timeStampNow5 = blockAfter5.timestamp;
+      await network.provider.send("evm_setNextBlockTimestamp", [timeStampNow5+9]);
+      await network.provider.send("evm_mine")
       await PathStake.connect(addr1).getReward();
 
       const expectedClaimed = ((100/200) * rewardRate * 10) + ((100/250) * rewardRate * 10) + ((100/150) * rewardRate * 10);
       const totalClaimed = await PathStake.totalClaimed();
       const actualClaimed = ethers.utils.formatEther(totalClaimed) - ethers.utils.formatEther(firstClaimed);
-      expect(parseFloat(actualClaimed).to.equal(parseFloat(expectedClaimed)));
+      expect(parseFloat(actualClaimed)).to.equal(parseFloat(expectedClaimed));
 
     })
   });
