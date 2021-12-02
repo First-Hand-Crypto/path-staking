@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-describe("Path Token contract", function () {
+describe("Path Mint Claim contract", function () {
   let PathToken;
   let Path;
   let PathAddr;

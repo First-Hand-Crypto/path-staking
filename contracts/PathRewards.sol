@@ -8,9 +8,10 @@ pragma solidity ^0.8.0;
 contract PathRewards is Ownable{
     IERC20 public token;
 
-    //total reward tokens will be 150,000,000 given out over 365 days
+    //total reward tokens will be 150,000,000 given out
     uint public rewardRate = 0;
     uint public rewardsDuration = 365 days;
+    uint public startRewardsTime;
     uint public lastUpdateTime;
     uint public lastRewardTimestamp;
     uint public rewardPerTokenStored;
@@ -27,8 +28,9 @@ contract PathRewards is Ownable{
     event Withdrawn(address indexed user, uint amountWithdrawn);
     event RewardsClaimed(address indexed user, uint rewardsClaimed);
 
-    constructor(address  _tokenAddress) {
+    constructor(address  _tokenAddress, uint _startRewards) {
         token = IERC20(_tokenAddress);
+        startRewardsTime = _startRewards;
     }
 
     modifier updateReward(address account) {
@@ -51,6 +53,16 @@ contract PathRewards is Ownable{
         }
     }
 
+    //function to check if staking rewards have started
+    function startTimestamp() internal view returns (uint) {
+        if (startRewardsTime > lastUpdateTime) {
+            return startRewardsTime;
+        }
+        else {
+            return lastUpdateTime;
+        }
+    }
+
     function balanceOf(address account) external view returns (uint) {
         return _balances[account];
     }
@@ -65,11 +77,11 @@ contract PathRewards is Ownable{
     }
 
     function rewardPerToken() public view returns (uint) {
-        if (stakedSupply == 0) {
+        if (stakedSupply == 0 || block.timestamp < startRewardsTime) {
             return 0;
         }
         return rewardPerTokenStored + (
-            (rewardRate * (rewardTimestamp()- lastUpdateTime) * 1e18 / stakedSupply)
+            (rewardRate * (rewardTimestamp()- startTimestamp()) * 1e18 / stakedSupply)
         );
     }
 
@@ -119,20 +131,19 @@ contract PathRewards is Ownable{
         token.transfer(msg.sender, _amount);
     }
 
-    function setRewardAmount(uint reward) onlyOwner external updateReward(address(0)) {
-        if (block.timestamp >= lastRewardTimestamp) {
-            rewardRate = reward / rewardsDuration;
-        }
-        else {
-            uint remaining = lastRewardTimestamp - block.timestamp;
-            uint leftover = remaining * rewardRate;
-            rewardRate = (reward + leftover) / rewardsDuration;
-        }
+    function setRewardAmount(uint reward, uint _rewardsDuration) onlyOwner external updateReward(address(0)) {
+        rewardsDuration = _rewardsDuration;
+        rewardRate = reward / rewardsDuration;
         uint balance = token.balanceOf(address(this)) - stakedSupply;
 
         require(rewardRate <= balance / rewardsDuration, "Contract does not have enough tokens for current reward rate");
 
         lastUpdateTime = block.timestamp;
-        lastRewardTimestamp = block.timestamp + rewardsDuration;
+        if (block.timestamp < startRewardsTime) {
+            lastRewardTimestamp = startRewardsTime + rewardsDuration;
+        }
+        else {
+            lastRewardTimestamp = block.timestamp + rewardsDuration;
+        }
     }
 }

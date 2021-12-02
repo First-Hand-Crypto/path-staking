@@ -69,11 +69,11 @@ contract PathMinterClaim is Ownable{
     }
 
     /**
-    * @dev Check current claimable amount
+    * @dev Get total remaining amount
     * @param _recipient recipient of allocation
      */
     function getRemainingAmount (address _recipient) public view returns (uint amount) {
-        return allocations[_recipient].totalAllocated - allocations[msg.sender].amountClaimed;
+        return allocations[_recipient].totalAllocated - allocations[_recipient].amountClaimed;
     }
 
     /**
