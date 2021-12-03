@@ -109,10 +109,12 @@ contract PathRewards is Ownable{
 
     function getReward() public updateReward(msg.sender) {
         uint reward = rewards[msg.sender];
-        rewards[msg.sender] = 0;
-        claimedRewards += reward;
-        token.transfer(msg.sender, reward);
-        emit RewardsClaimed(msg.sender, reward);
+        if (reward > 0) {
+            rewards[msg.sender] = 0;
+            claimedRewards += reward;
+            token.transfer(msg.sender, reward);
+            emit RewardsClaimed(msg.sender, reward);
+        }
     }
 
     function exit() external {
