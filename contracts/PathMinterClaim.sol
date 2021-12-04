@@ -1,4 +1,4 @@
-pragma solidity ^0.8.4;
+pragma solidity 0.8.4;
 
 // SPDX-License-Identifier: MIT
 
@@ -8,11 +8,11 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract PathMinterClaim is Ownable{
 
-    IERC20 private token;
+    IERC20 private immutable token;
 
     uint256 public grandTotalClaimed = 0;
-    uint256 public startTime;
-    uint256 public endVesting;
+    uint256 public immutable startTime;
+    uint256 public immutable endVesting;
 
     uint private totalAllocated;
 
@@ -60,20 +60,24 @@ contract PathMinterClaim is Ownable{
     */
     function setAllocation (address[] memory _addresses, uint[] memory _totalAllocated, uint[] memory _initialPercentage) onlyOwner external {
         //make sure that the length of address and total minted is the same
-        require(_addresses.length == _totalAllocated.length);
+        require(_addresses.length == _totalAllocated.length, "Input array length not match");
+        require(_addresses.length == _initialPercentage.length, "Input array length not match");
+        uint amountToTransfer;
         for (uint i = 0; i < _addresses.length; i++ ) {
             uint initialAllocation =  _totalAllocated[i] * _initialPercentage[i] / 100;
             allocations[_addresses[i]] = Allocation(initialAllocation, _totalAllocated[i], 0);
+            amountToTransfer += _totalAllocated[i];
             totalAllocated += _totalAllocated[i];
         }
+        require(token.transferFrom(msg.sender, address(this), amountToTransfer), "Token Transfer Failed");
     }
 
     /**
-    * @dev Check current claimable amount
+    * @dev Get total remaining amount
     * @param _recipient recipient of allocation
      */
-    function getRemainingAmount (address _recipient) public view returns (uint amount) {
-        return allocations[_recipient].totalAllocated - allocations[msg.sender].amountClaimed;
+    function getRemainingAmount (address _recipient) external view returns (uint amount) {
+        return allocations[_recipient].totalAllocated - allocations[_recipient].amountClaimed;
     }
 
     /**
@@ -89,7 +93,7 @@ contract PathMinterClaim is Ownable{
         require(tokensToClaim > 0, "Recipient should have more than 0 tokens to claim");
         allocations[msg.sender].amountClaimed = newClaimAmount;
         grandTotalClaimed += tokensToClaim;
-        require(token.transfer(msg.sender, tokensToClaim));
+        require(token.transfer(msg.sender, tokensToClaim), "Transfer of token failed");
         emit claimedToken(msg.sender, tokensToClaim, allocations[msg.sender].amountClaimed);
     }
 
@@ -107,7 +111,7 @@ contract PathMinterClaim is Ownable{
         require(tokensToClaim > 0, "Recipient should have more than 0 tokens to claim");
         allocations[_recipient].amountClaimed = newClaimAmount;
         grandTotalClaimed += tokensToClaim;
-        require(token.transfer(_recipient, tokensToClaim));
+        require(token.transfer(_recipient, tokensToClaim), "Transfer of token failed");
         emit claimedToken(_recipient, tokensToClaim, allocations[_recipient].amountClaimed);
     }
 
@@ -116,8 +120,8 @@ contract PathMinterClaim is Ownable{
      * @dev reclaim excess allocated tokens for claiming
      * @param _amount the amount to withdraw tokens for
       */
-    function reclaimExcessTokens(uint _amount) public onlyOwner {
-        require(_amount <= totalAllocated - grandTotalClaimed - token.balanceOf(address(this)));
-        require(token.transfer(msg.sender, _amount));
+    function reclaimExcessTokens(uint _amount) external onlyOwner {
+        require(_amount <= token.balanceOf(address(this)) - (totalAllocated - grandTotalClaimed), "Amount of tokens to recover is more than what is allowed");
+        require(token.transfer(msg.sender, _amount), "Transfer of token failed");
     }
 }

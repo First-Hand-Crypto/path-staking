@@ -1,4 +1,4 @@
-pragma solidity ^0.8.4;
+pragma solidity 0.8.4;
 
 // SPDX-License-Identifier: MIT
 
@@ -7,19 +7,19 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract PathVesting is Ownable{
 
-    IERC20 private token;
+    IERC20 immutable private token;
     enum AllocationType { TEAM, BONUS, ADVISOR, PRIVATE, OTHER }
 
 
     uint public grandTotalClaimed = 0;
-    uint public startTime;
+    uint immutable public startTime;
 
     uint private totalAllocated;
 
     struct Allocation {
         uint allocationType; //type of Allocation
         uint initialAllocation; //Initial token allocated
-        uint endIntitial; // Initial token claim locked until 
+        uint endInitial; // Initial token claim locked until 
         uint endCliff; // Vested Tokens are locked until
         uint endVesting; // End vesting 
         uint totalAllocated; // Total tokens allocated
@@ -57,8 +57,8 @@ contract PathVesting is Ownable{
             newClaimAmount = allocations[_recipient].initialAllocation;
             if (block.timestamp >= allocations[_recipient].endCliff) {
                 newClaimAmount += ((allocations[_recipient].totalAllocated - allocations[_recipient].initialAllocation)
-                    / (allocations[_recipient].endVesting - allocations[_recipient].endCliff))
-                    * (block.timestamp - allocations[_recipient].endCliff);
+                	* (block.timestamp - allocations[_recipient].endCliff))
+                    / (allocations[_recipient].endVesting - allocations[_recipient].endCliff);
             }
         }
         return newClaimAmount;
@@ -78,7 +78,13 @@ contract PathVesting is Ownable{
         uint[] memory _endVesting,
         uint[] memory _allocationType) onlyOwner external {
         //make sure that the length of address and total minted is the same
-        require(_addresses.length == _totalAllocated.length);
+        require(_addresses.length == _totalAllocated.length, "length of array should be the same");
+        require(_addresses.length == _initialAllocation.length, "length of array should be the same");
+        require(_addresses.length == _endInitial.length, "length of array should be the same");
+        require(_addresses.length == _endCliff.length, "length of array should be the same");
+        require(_addresses.length == _endVesting.length, "length of array should be the same");
+        require(_addresses.length == _allocationType.length, "length of array should be the same");
+        uint amountToTransfer;
         for (uint i = 0; i < _addresses.length; i++ ) {
             require(_endInitial[i] <= _endCliff[i], "Initial claim should be earlier than end cliff time");
             allocations[_addresses[i]] = Allocation(
@@ -90,16 +96,18 @@ contract PathVesting is Ownable{
                 _totalAllocated[i],
                 0);
             totalAllocatedTypes[AllocationType(_allocationType[i])].totalAllocated += _totalAllocated[i];
+            amountToTransfer += _totalAllocated[i];
             totalAllocated += _totalAllocated[i];
         }
+        require(token.transferFrom(msg.sender, address(this), amountToTransfer), "Token transfer failed");
     }
 
     /**
     * @dev Check current claimable amount
     * @param _recipient recipient of allocation
      */
-    function getRemainingAmount (address _recipient) public view returns (uint amount) {
-        return allocations[_recipient].totalAllocated - allocations[msg.sender].amountClaimed;
+    function getRemainingAmount (address _recipient) external view returns (uint amount) {
+        return allocations[_recipient].totalAllocated - allocations[_recipient].amountClaimed;
     }
 
 
@@ -110,7 +118,7 @@ contract PathVesting is Ownable{
     function transferTokens(address _recipient) external {
         require(allocations[_recipient].amountClaimed < allocations[_recipient].totalAllocated, "Address should have some allocated tokens");
         require(startTime <= block.timestamp, "Start time of claim should be later than current time");
-        require(startTime <= allocations[_recipient].endIntitial, "Initial claim should be later than current time");
+        require(startTime <= allocations[_recipient].endInitial, "Initial claim should be later than current time");
         //transfer tokens after subtracting tokens claimed
         uint newClaimAmount = calculateClaimAmount(_recipient);
         uint tokensToClaim = getClaimTotal(_recipient);
@@ -118,7 +126,7 @@ contract PathVesting is Ownable{
         allocations[_recipient].amountClaimed = newClaimAmount;
         grandTotalClaimed += tokensToClaim;
         totalAllocatedTypes[AllocationType(allocations[_recipient].allocationType)].amountClaimed += tokensToClaim;
-        require(token.transfer(_recipient, tokensToClaim));
+        require(token.transfer(_recipient, tokensToClaim), "Token transfer failed");
         emit claimedToken(_recipient, tokensToClaim, allocations[_recipient].amountClaimed);
     }
 
@@ -127,8 +135,8 @@ contract PathVesting is Ownable{
      * @dev reclaim excess allocated tokens for claiming
      * @param _amount the amount to withdraw tokens for
       */
-    function reclaimExcessTokens(uint _amount) public onlyOwner {
-        require(_amount <= totalAllocated - grandTotalClaimed - token.balanceOf(address(this)));
-        require(token.transfer(msg.sender, _amount));
+    function reclaimExcessTokens(uint _amount) external onlyOwner {
+        require(_amount <= token.balanceOf(address(this)) - (totalAllocated - grandTotalClaimed), "Amount of tokens to recover is more than what is allowed");
+        require(token.transfer(msg.sender, _amount), "Token transfer failed");
     }
 }
