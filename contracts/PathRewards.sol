@@ -3,7 +3,7 @@
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 contract PathRewards is Ownable{
     IERC20 public token;
@@ -27,6 +27,7 @@ contract PathRewards is Ownable{
     event Staked(address indexed user, uint amountStaked);
     event Withdrawn(address indexed user, uint amountWithdrawn);
     event RewardsClaimed(address indexed user, uint rewardsClaimed);
+    event RewardAmountSet(uint rewardRate, uint duration);
 
     constructor(address  _tokenAddress, uint _startRewards) {
         token = IERC20(_tokenAddress);
@@ -95,7 +96,7 @@ contract PathRewards is Ownable{
         require(_amount > 0, "Must stake > 0 tokens");
         stakedSupply += _amount;
         _balances[msg.sender] += _amount;
-        token.transferFrom(msg.sender, address(this), _amount);
+        require(token.transferFrom(msg.sender, address(this), _amount), "Token transfer failed");
         emit Staked(msg.sender, _amount);
     }
 
@@ -103,7 +104,7 @@ contract PathRewards is Ownable{
         require(_amount > 0, "Must withdraw > 0 tokens");
         stakedSupply -= _amount;
         _balances[msg.sender] -= _amount;
-        token.transfer(msg.sender, _amount);
+        require(token.transfer(msg.sender, _amount), "Token transfer failed");
         emit Withdrawn(msg.sender, _amount);
     }
 
@@ -112,7 +113,7 @@ contract PathRewards is Ownable{
         if (reward > 0) {
             rewards[msg.sender] = 0;
             claimedRewards += reward;
-            token.transfer(msg.sender, reward);
+            require(token.transfer(msg.sender, reward), "Token transfer failed");
             emit RewardsClaimed(msg.sender, reward);
         }
     }
@@ -123,15 +124,6 @@ contract PathRewards is Ownable{
     }
 
     //owner only functions
-
-    //recover any leftoever reward tokens
-    function recoverExcess(uint _amount) onlyOwner external {
-        //ensures that tokens cannot be recovered until staking period has ended
-        require(block.timestamp > lastRewardTimestamp);
-        //ensures no removal of staked tokens
-        require(_amount - stakedSupply > 0);
-        token.transfer(msg.sender, _amount);
-    }
 
     function setRewardAmount(uint reward, uint _rewardsDuration) onlyOwner external updateReward(address(0)) {
         rewardsDuration = _rewardsDuration;
@@ -147,5 +139,6 @@ contract PathRewards is Ownable{
         else {
             lastRewardTimestamp = block.timestamp + rewardsDuration;
         }
+        emit RewardAmountSet(rewardRate, _rewardsDuration);
     }
 }

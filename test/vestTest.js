@@ -20,7 +20,7 @@ describe("Path Vesting contract", function () {
     Path = await PathToken.deploy("1000000000000000000000000000");
     PathAddr = Path.address
     PathVesting = await PathVestingContract.deploy(PathAddr, timeStart);
-    await Path.transfer(PathVesting.address, "100000000000000000000000000");
+    await Path.approve(PathVesting.address, "1000000000000000000000000000");
 
   });
 

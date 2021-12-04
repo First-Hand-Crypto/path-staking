@@ -60,7 +60,7 @@ describe("Path Stake contract", function () {
     it("Should not allow me to claim any rewards before start time", async function() {
       const contractBalance = await Path.balanceOf(PathStakeAddr);
 
-      await PathStake.setRewardAmount("150000000000000000000000000", (365 * 24 * 60 * 60));
+      await PathStake.setRewardAmount(0, (365 * 24 * 60 * 60));
       
       await PathStake.stake("100000000000000000000");
       const blockNumAfter = await ethers.provider.getBlockNumber();
@@ -69,6 +69,12 @@ describe("Path Stake contract", function () {
       await network.provider.send("evm_setNextBlockTimestamp", [timeStampNow+9])
       await network.provider.send("evm_mine")
 
+      await PathStake.setRewardAmount("150000000000000000000000000", (365 * 24 * 60 * 60));
+      const blockNumAfter2 = await ethers.provider.getBlockNumber();
+      const blockAfter2 = await ethers.provider.getBlock(blockNumAfter2);
+      const timeStampNow2 = blockAfter2.timestamp;
+      await network.provider.send("evm_setNextBlockTimestamp", [timeStampNow2+9])
+      await network.provider.send("evm_mine")
       await PathStake.getReward();
       const claimed = ethers.utils.formatEther(await PathStake.totalClaimed());
       expect(parseFloat(claimed)).to.equal(parseFloat(0));
