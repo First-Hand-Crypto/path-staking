@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-describe("Path Token contract", function () {
+describe("Path Mint Claim contract", function () {
   let PathToken;
   let Path;
   let PathAddr;
@@ -21,8 +21,7 @@ describe("Path Token contract", function () {
     Path = await PathToken.deploy("1000000000000000000000000000");
     PathAddr = Path.address
     PathMinterClaim = await PathMinterClaimContract.deploy(PathAddr, timeStart, timeStart + 100);
-    await Path.transfer(PathMinterClaim.address, "100000000000000000000000000");
-
+    await Path.approve(PathMinterClaim.address, "1000000000000000000000000000");
   });
 
   describe("Add allocations", function () {
