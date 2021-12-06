@@ -48,7 +48,7 @@ contract PathMinterClaim is Ownable{
         }
         else {
             newClaimAmount = allocations[_recipient].initialAllocation;
-            newClaimAmount += ((allocations[_recipient].totalAllocated - allocations[_recipient].initialAllocation) / (endVesting - startTime)) * (block.timestamp - startTime);
+            newClaimAmount += ((allocations[_recipient].totalAllocated - allocations[_recipient].initialAllocation) * (block.timestamp - startTime)) / (endVesting - startTime);
         }
         return newClaimAmount;
     }
