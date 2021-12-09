@@ -68,11 +68,11 @@ contract PathRewards is Ownable{
     }
 
 
-    function totalStaked() public view returns (uint) {
+    function totalStaked() external view returns (uint) {
         return stakedSupply;
     }
 
-    function totalClaimed() public view returns (uint) {
+    function totalClaimed() external view returns (uint) {
         return claimedRewards;
     }
 
